@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
 
@@ -29,6 +30,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-[family-name:var(--font-body)]">
         {children}
+        <Analytics />
       </body>
     </html>
   );
