@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lexa Slay Math Quest
 
-## Getting Started
+A playful Next.js study game built for quick math practice, rewards, and confidence-building.
 
-First, run the development server:
+## Local Development
+
+Run the app locally:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Before deploying, you can run a full check:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run check
+```
 
-## Learn More
+## Vercel Deploy Flow
 
-To learn more about Next.js, take a look at the following resources:
+This project now includes a local Vercel CLI and ready-to-use npm scripts.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Important:
+- Run these commands from this folder: `Lexa Math App/lexa-math-app-temp`
+- The first deploy will ask you to log in and link the project
+- The `.vercel` folder is gitignored, so local project linking stays out of source control
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### First-Time Setup
 
-## Deploy on Vercel
+Log into Vercel:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run vercel:login
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Link this folder to a Vercel project:
+
+```bash
+npm run vercel:link
+```
+
+If you want local Vercel environment variables after linking:
+
+```bash
+npm run vercel:pull
+```
+
+### Deploy Commands
+
+Preview deployment:
+
+```bash
+npm run vercel:preview
+```
+
+Production deployment:
+
+```bash
+npm run vercel:prod
+```
+
+### Optional Prebuilt Flow
+
+If you want to build locally first and then deploy the build output:
+
+```bash
+npm run vercel:build
+npm run vercel:deploy-prebuilt
+```
+
+Production prebuilt deploy:
+
+```bash
+npm run vercel:build:prod
+npm run vercel:deploy-prebuilt:prod
+```
+
+## Handy Scripts
+
+- `npm run dev` starts the app locally
+- `npm run check` runs lint and production build
+- `npm run vercel:preview` creates a preview deployment
+- `npm run vercel:prod` deploys directly to production
+- `npm run vercel:pull` pulls Vercel project settings and env vars
+
+## Stack
+
+- Next.js 16 App Router
+- React 19
+- Tailwind CSS 4
+- Framer Motion
+- Lucide React
