@@ -1,5 +1,5 @@
-import LexaSlayMathQuest from "@/components/lexa-slay-math-quest";
+import LexaSlayLearningHub from "@/components/lexa-slay-learning-hub";
 
 export default function Home() {
-  return <LexaSlayMathQuest />;
+  return <LexaSlayLearningHub />;
 }
