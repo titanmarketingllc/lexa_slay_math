@@ -3,6 +3,8 @@
 :root {
   --background: #fff8ef;
   --foreground: #1f2937;
+  --font-heading: "Trebuchet MS", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-body: "Nunito", "Segoe UI", system-ui, sans-serif;
 }
 
 @theme inline {
