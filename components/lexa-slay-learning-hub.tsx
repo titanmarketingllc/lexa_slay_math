@@ -6,9 +6,16 @@ import { BookOpen, Crown, Medal, Sparkles, SpellCheck, Star, Trophy, Users } fro
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  SPELLING_MODES,
+  getAllSpellingWords,
+  getSpellingWordsForDifficulty,
+  type SpellingDifficulty,
+  type SpellingMode,
+} from "@/lib/spelling-inventory";
 
 type Activity = "math" | "spelling";
-type Difficulty = "Starter" | "Builder" | "Challenge";
+type Difficulty = SpellingDifficulty;
 
 type ScoreRecord = {
   id: string;
@@ -28,12 +35,6 @@ type MathQuestion = {
   tip: string;
 };
 
-type SpellingWord = {
-  word: string;
-  difficulty: Difficulty;
-  clue: string;
-};
-
 const SCOREBOARD_KEY = "lexa-slay-scoreboard-v1";
 const PLAYER_KEY = "lexa-slay-current-player-v1";
 
@@ -50,106 +51,24 @@ const MATH_QUESTIONS: MathQuestion[] = [
   { prompt: "School starts at 8:00 and ends at 3:00. How many hours is that?", choices: ["5", "6", "7", "8"], answer: "7", tip: "Count from 8 to 3." },
 ];
 
-const SPELLING_WORDS: SpellingWord[] = [
-  { word: "about", difficulty: "Starter", clue: "Concerning something" },
-  { word: "again", difficulty: "Starter", clue: "One more time" },
-  { word: "always", difficulty: "Starter", clue: "Every time" },
-  { word: "answer", difficulty: "Starter", clue: "A reply or solution" },
-  { word: "because", difficulty: "Starter", clue: "For the reason that" },
-  { word: "before", difficulty: "Starter", clue: "Earlier than" },
-  { word: "better", difficulty: "Starter", clue: "More good" },
-  { word: "between", difficulty: "Starter", clue: "In the middle of two things" },
-  { word: "brought", difficulty: "Starter", clue: "Carried with you" },
-  { word: "caught", difficulty: "Starter", clue: "Grabbed or captured" },
-  { word: "different", difficulty: "Starter", clue: "Not the same" },
-  { word: "enough", difficulty: "Starter", clue: "As much as needed" },
-  { word: "favorite", difficulty: "Starter", clue: "Liked the most" },
-  { word: "friend", difficulty: "Starter", clue: "Someone you like and trust" },
-  { word: "important", difficulty: "Starter", clue: "Matters a lot" },
-  { word: "inside", difficulty: "Starter", clue: "Within something" },
-  { word: "minute", difficulty: "Starter", clue: "Sixty seconds" },
-  { word: "people", difficulty: "Starter", clue: "More than one person" },
-  { word: "picture", difficulty: "Starter", clue: "A drawing or photo" },
-  { word: "sentence", difficulty: "Starter", clue: "A group of words with a complete idea" },
-  { word: "through", difficulty: "Starter", clue: "From one side to the other" },
-  { word: "usually", difficulty: "Starter", clue: "Most of the time" },
-  { word: "weather", difficulty: "Starter", clue: "Rain, sun, wind, and storms" },
-  { word: "without", difficulty: "Starter", clue: "Not having something" },
-  { word: "although", difficulty: "Builder", clue: "Even though" },
-  { word: "beautiful", difficulty: "Builder", clue: "Very pretty" },
-  { word: "believe", difficulty: "Builder", clue: "To think something is true" },
-  { word: "business", difficulty: "Builder", clue: "A company or trade" },
-  { word: "calendar", difficulty: "Builder", clue: "Tracks days, weeks, and months" },
-  { word: "careful", difficulty: "Builder", clue: "Doing something with caution" },
-  { word: "certain", difficulty: "Builder", clue: "Sure or specific" },
-  { word: "complete", difficulty: "Builder", clue: "Finished" },
-  { word: "continue", difficulty: "Builder", clue: "Keep going" },
-  { word: "describe", difficulty: "Builder", clue: "Tell what something is like" },
-  { word: "direction", difficulty: "Builder", clue: "A way to go or an instruction" },
-  { word: "discover", difficulty: "Builder", clue: "Find something new" },
-  { word: "exercise", difficulty: "Builder", clue: "Activity for your body" },
-  { word: "favorite", difficulty: "Builder", clue: "Liked the most" },
-  { word: "finally", difficulty: "Builder", clue: "At last" },
-  { word: "history", difficulty: "Builder", clue: "Events from the past" },
-  { word: "imagine", difficulty: "Builder", clue: "Picture in your mind" },
-  { word: "language", difficulty: "Builder", clue: "Words people use to communicate" },
-  { word: "library", difficulty: "Builder", clue: "A place with books" },
-  { word: "measure", difficulty: "Builder", clue: "Find the size or amount" },
-  { word: "natural", difficulty: "Builder", clue: "From nature" },
-  { word: "possible", difficulty: "Builder", clue: "Can happen" },
-  { word: "probably", difficulty: "Builder", clue: "Likely" },
-  { word: "question", difficulty: "Builder", clue: "Something you ask" },
-  { word: "remember", difficulty: "Builder", clue: "Keep in your mind" },
-  { word: "separate", difficulty: "Builder", clue: "To keep apart" },
-  { word: "special", difficulty: "Builder", clue: "Not ordinary" },
-  { word: "straight", difficulty: "Builder", clue: "Not curved" },
-  { word: "surprise", difficulty: "Builder", clue: "Something unexpected" },
-  { word: "therefore", difficulty: "Builder", clue: "For that reason" },
-  { word: "whether", difficulty: "Builder", clue: "Used when comparing choices" },
-  { word: "accident", difficulty: "Challenge", clue: "Something that happens by mistake" },
-  { word: "actually", difficulty: "Challenge", clue: "Really or truly" },
-  { word: "adventure", difficulty: "Challenge", clue: "An exciting experience" },
-  { word: "attention", difficulty: "Challenge", clue: "Focused listening or watching" },
-  { word: "audience", difficulty: "Challenge", clue: "People watching or listening" },
-  { word: "available", difficulty: "Challenge", clue: "Ready to use" },
-  { word: "community", difficulty: "Challenge", clue: "A group of people in one area" },
-  { word: "confidence", difficulty: "Challenge", clue: "Believing you can do it" },
-  { word: "courageous", difficulty: "Challenge", clue: "Brave" },
-  { word: "curiosity", difficulty: "Challenge", clue: "Wanting to learn or know" },
-  { word: "dangerous", difficulty: "Challenge", clue: "Not safe" },
-  { word: "decision", difficulty: "Challenge", clue: "A choice" },
-  { word: "delicious", difficulty: "Challenge", clue: "Very tasty" },
-  { word: "dictionary", difficulty: "Challenge", clue: "A book or site with word meanings" },
-  { word: "embarrass", difficulty: "Challenge", clue: "To make someone feel awkward" },
-  { word: "especially", difficulty: "Challenge", clue: "More than usual" },
-  { word: "experience", difficulty: "Challenge", clue: "Something you do or live through" },
-  { word: "experiment", difficulty: "Challenge", clue: "A science test" },
-  { word: "government", difficulty: "Challenge", clue: "The people who run a city, state, or country" },
-  { word: "guarantee", difficulty: "Challenge", clue: "A promise" },
-  { word: "immediately", difficulty: "Challenge", clue: "Right away" },
-  { word: "independent", difficulty: "Challenge", clue: "Able to do things on your own" },
-  { word: "knowledge", difficulty: "Challenge", clue: "What you know" },
-  { word: "necessary", difficulty: "Challenge", clue: "Needed" },
-  { word: "occasion", difficulty: "Challenge", clue: "A special event or time" },
-  { word: "opportunity", difficulty: "Challenge", clue: "A chance" },
-  { word: "organization", difficulty: "Challenge", clue: "A group or the act of arranging things" },
-  { word: "particular", difficulty: "Challenge", clue: "Specific" },
-  { word: "performance", difficulty: "Challenge", clue: "How well someone does" },
-  { word: "recommend", difficulty: "Challenge", clue: "Suggest as a good choice" },
-  { word: "responsible", difficulty: "Challenge", clue: "Trusted to handle something" },
-  { word: "schedule", difficulty: "Challenge", clue: "A plan for when things happen" },
-  { word: "successful", difficulty: "Challenge", clue: "Having a good result" },
-  { word: "temperature", difficulty: "Challenge", clue: "How hot or cold something is" },
-  { word: "understand", difficulty: "Challenge", clue: "To know what something means" },
-  { word: "wonderful", difficulty: "Challenge", clue: "Very good" },
-];
-
 function shuffle<T>(items: T[]) {
   return [...items].sort(() => Math.random() - 0.5);
 }
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
+}
+
+function createScoreId() {
+  if (typeof window !== "undefined" && window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getScoreDate() {
+  return new Date().toLocaleDateString();
 }
 
 function loadScores(): ScoreRecord[] {
@@ -171,9 +90,9 @@ export default function LexaSlayLearningHub() {
   const [pendingName, setPendingName] = useState(getStoredPlayer);
   const [scores, setScores] = useState<ScoreRecord[]>(loadScores);
   const [activity, setActivity] = useState<Activity | null>(null);
-  const [difficulty, setDifficulty] = useState<Difficulty | "Mixed">("Mixed");
+  const [difficulty, setDifficulty] = useState<SpellingMode>("Mixed");
   const [mathQuestions, setMathQuestions] = useState(() => shuffle(MATH_QUESTIONS));
-  const [spellingWords, setSpellingWords] = useState(() => shuffle(SPELLING_WORDS));
+  const [spellingWords, setSpellingWords] = useState(() => shuffle(getAllSpellingWords()));
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [correct, setCorrect] = useState(0);
@@ -216,7 +135,7 @@ export default function LexaSlayLearningHub() {
     window.localStorage.setItem(PLAYER_KEY, cleanName);
   }
 
-  function startActivity(nextActivity: Activity, nextDifficulty: Difficulty | "Mixed" = "Mixed") {
+  function startActivity(nextActivity: Activity, nextDifficulty: SpellingMode = "Mixed") {
     if (!playerName.trim()) {
       setFeedback("Enter your name first so your score counts.");
       return;
@@ -235,21 +154,21 @@ export default function LexaSlayLearningHub() {
     if (nextActivity === "math") {
       setMathQuestions(shuffle(MATH_QUESTIONS));
     } else {
-      const pool = nextDifficulty === "Mixed" ? SPELLING_WORDS : SPELLING_WORDS.filter((word) => word.difficulty === nextDifficulty);
+      const pool = nextDifficulty === "Mixed" ? getAllSpellingWords() : getSpellingWordsForDifficulty(nextDifficulty);
       setSpellingWords(shuffle(pool).slice(0, 15));
     }
   }
 
   function logScore(finalScore: number, finalCorrect: number, finalTotal: number) {
     const record: ScoreRecord = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      id: createScoreId(),
       playerName: playerName.trim(),
       activity: activity ?? "math",
       difficulty,
       score: finalScore,
       correct: finalCorrect,
       total: finalTotal,
-      date: new Date().toLocaleDateString(),
+      date: getScoreDate(),
     };
     setScores((current) => [record, ...current].slice(0, 100));
   }
@@ -286,10 +205,11 @@ export default function LexaSlayLearningHub() {
   }
 
   function answerSpelling() {
-    if (!currentSpelling || finished) return;
+    if (!currentSpelling || finished || selected) return;
     const isCorrect = normalize(typedWord) === normalize(currentSpelling.word);
     const nextScore = score + (isCorrect ? (currentSpelling.difficulty === "Challenge" ? 20 : currentSpelling.difficulty === "Builder" ? 15 : 10) : 0);
     const nextCorrect = correct + (isCorrect ? 1 : 0);
+    setSelected(typedWord || currentSpelling.word);
     setScore(nextScore);
     setCorrect(nextCorrect);
     setFeedback(isCorrect ? "Nailed it. Dictionary domination." : `Good try. Correct spelling: ${currentSpelling.word}`);
@@ -329,7 +249,7 @@ export default function LexaSlayLearningHub() {
               <span className="flex items-center gap-3"><Crown className="h-10 w-10 text-amber-500" /> Lexa Slay Learning Quest</span>
             </CardTitle>
             <p className="max-w-3xl text-lg leading-8 text-slate-600">
-              Choose a player, take a math round or spelling round, and every completed session logs to the scoreboard. No name, no score. Tiny accountability goblin included.
+              Choose a player, take a math round or spelling round, and every completed session logs to the scoreboard. No name, no score. Tiny accountability sparkle included.
             </p>
           </CardHeader>
         </Card>
@@ -366,7 +286,7 @@ export default function LexaSlayLearningHub() {
                     <h2 className="mt-4 text-3xl font-black text-slate-950">4th Grade Spelling</h2>
                     <p className="mt-2 text-slate-600">Words are split into Starter, Builder, and Challenge sections.</p>
                     <div className="mt-5 grid gap-2">
-                      {(["Starter", "Builder", "Challenge", "Mixed"] as const).map((level) => (
+                      {SPELLING_MODES.map((level) => (
                         <Button key={level} onClick={() => startActivity("spelling", level)} variant="secondary" className="w-full justify-center">
                           <SpellCheck className="h-5 w-5" /> {level} Spelling
                         </Button>
@@ -418,7 +338,7 @@ export default function LexaSlayLearningHub() {
                     className="min-h-16 w-full rounded-[1.5rem] border-2 border-slate-200 bg-white px-5 text-2xl font-black text-slate-900 outline-none focus:border-rose-300"
                   />
                   <div className="flex flex-wrap gap-3">
-                    <Button onClick={answerSpelling} size="lg"><Sparkles className="h-5 w-5" /> Submit</Button>
+                    <Button onClick={answerSpelling} disabled={Boolean(selected)} size="lg"><Sparkles className="h-5 w-5" /> Submit</Button>
                     {feedback && <Button onClick={nextRound} variant="secondary" size="lg">Next Word</Button>}
                   </div>
                   {feedback && <div className="rounded-[1.5rem] bg-slate-100 p-4 text-lg font-bold text-slate-700">{feedback}</div>}
