@@ -3,6 +3,8 @@
 :root {
   --background: #fff8ef;
   --foreground: #1f2937;
+  --font-heading: "Trebuchet MS", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-body: "Nunito", "Segoe UI", system-ui, sans-serif;
 }
 
 @theme inline {
@@ -34,4 +36,10 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.pill {
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
