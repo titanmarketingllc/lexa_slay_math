@@ -1,0 +1,17 @@
+<svg width="640" height="760" viewBox="0 0 640 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="760" rx="64" fill="#090019"/>
+  <circle cx="312" cy="382" r="246" fill="#a855f7" opacity=".24"/>
+  <circle cx="410" cy="405" r="210" fill="#22d3ee" opacity=".2"/>
+  <path d="M323 82c91 29 145 100 142 194-3 91-62 160-140 179-82-14-144-83-148-171-4-93 47-171 146-202Z" fill="#111827"/>
+  <path d="M335 92c64 21 113 57 147 109-60 6-112-11-157-51-26 46-70 83-133 112 4-80 51-145 143-170Z" fill="#ec4899"/>
+  <circle cx="320" cy="291" r="103" fill="#f8d1c4"/>
+  <circle cx="273" cy="267" r="10" fill="#111827"/>
+  <circle cx="369" cy="267" r="10" fill="#111827"/>
+  <path d="M268 315c29 24 66 24 107-2" stroke="#7c2d12" stroke-width="10" stroke-linecap="round"/>
+  <path d="M195 392h250l54 271H139l56-271Z" fill="#ec4899"/>
+  <path d="M248 421h146l31 204H217l31-204Z" fill="#020617"/>
+  <text x="321" y="514" text-anchor="middle" font-family="Arial Black, Arial" font-size="48" fill="#facc15">SLAY</text>
+  <path d="M186 425c-49 20-82 55-99 105l65 36c19-45 48-72 88-81l-54-60Z" fill="#f8d1c4"/>
+  <path d="M451 421c53 17 90 52 110 104l-65 39c-20-46-51-73-93-82l48-61Z" fill="#f8d1c4"/>
+  <path d="M260 50l22 30 37-49 38 49 22-30 7 64H253l7-64Z" fill="#facc15"/>
+</svg>
