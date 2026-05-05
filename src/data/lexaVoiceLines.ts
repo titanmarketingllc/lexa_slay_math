@@ -76,6 +76,34 @@ export const lexaVoiceLines = {
     "You have got this.",
     "Tap play when you are ready to practice.",
   ],
+  scienceStart: [
+    "Welcome to the Slay Lab.",
+    "Science mode: activated.",
+    "Grab your goggles. We're about to glow.",
+    "Let's test it, prove it, slay it.",
+    "Tiny scientist, big brain energy.",
+  ],
+  scienceCorrect: [
+    "That hypothesis hit.",
+    "Certified science slay.",
+    "Data says: you crushed it.",
+    "That answer has lab-coat confidence.",
+    "Boom. Science sparkle.",
+  ],
+  scienceWrong: [
+    "No stress. Experiments are for learning.",
+    "That result was unexpected. Try again.",
+    "Science loves a comeback.",
+    "New data, new move.",
+    "Good try. Check the explanation and keep going.",
+  ],
+  scienceLevelComplete: [
+    "Lab level slayed.",
+    "Crown earned, goggles glowing.",
+    "You just upgraded your science brain.",
+    "The lab report says: iconic.",
+    "Science boss defeated.",
+  ],
 } as const;
 
 export type LexaLineCategory = keyof typeof lexaVoiceLines;
