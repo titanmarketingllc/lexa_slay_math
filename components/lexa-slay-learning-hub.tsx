@@ -1,15 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BookOpen, Crown, Gem, Gift, Heart, Shirt, ShoppingBag, Star, Target, Trophy, Zap } from "lucide-react";
+import { BookOpen, Crown, Gem, Gift, Heart, Shirt, ShoppingBag, SpellCheck, Star, Target, Trophy, Volume2, Zap } from "lucide-react";
 
 import LexaCharacter from "@/components/lexa/LexaCharacter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { getAllSpellingWords, getSpellingWordsForDifficulty, SPELLING_MODES, type SpellingMode, type SpellingPrompt } from "@/lib/spelling-inventory";
 import { getLexaLine } from "@/src/data/lexaVoiceLines";
 
-type View = "play" | "fashion" | "missions" | "shop" | "rewards";
+type View = "play" | "spelling" | "fashion" | "missions" | "shop" | "rewards";
 
 type Question = {
   prompt: string;
@@ -25,6 +26,7 @@ type ScoreRecord = {
   correct: number;
   total: number;
   date: string;
+  activity?: "Math" | "Spelling";
 };
 
 const PLAYER_KEY = "lexa-slay-current-player-v1";
@@ -45,6 +47,7 @@ const questions: Question[] = [
 
 const nav = [
   { id: "play", label: "Play", icon: Zap },
+  { id: "spelling", label: "Spelling", icon: SpellCheck },
   { id: "fashion", label: "Fashion", icon: Shirt },
   { id: "missions", label: "Missions", icon: Target },
   { id: "shop", label: "Shop", icon: ShoppingBag },
@@ -73,6 +76,54 @@ function shuffle<T>(items: T[]) {
   return [...items].sort(() => Math.random() - 0.5);
 }
 
+function normalizeSpelling(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function getClearEnglishVoice(voices: SpeechSynthesisVoice[]) {
+  const preferredNames = [
+    "Microsoft Jenny",
+    "Microsoft Aria",
+    "Microsoft Zira",
+    "Google US English",
+    "Samantha",
+    "Karen",
+    "Moira",
+  ];
+  const englishVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith("en"));
+
+  return (
+    preferredNames
+      .map((name) => englishVoices.find((voice) => voice.name.toLowerCase().includes(name.toLowerCase())))
+      .find(Boolean) ??
+    englishVoices.find((voice) => voice.lang.toLowerCase() === "en-us" && voice.localService) ??
+    englishVoices.find((voice) => voice.lang.toLowerCase() === "en-us") ??
+    englishVoices[0] ??
+    null
+  );
+}
+
+function speakVocabularyWord(word: string, slow = false) {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+  const synth = window.speechSynthesis;
+  const voices = synth.getVoices();
+
+  if (voices.length === 0) {
+    window.speechSynthesis.onvoiceschanged = () => speakVocabularyWord(word, slow);
+    return;
+  }
+
+  synth.cancel();
+  const utterance = new SpeechSynthesisUtterance(slow ? `${word}. ${word}.` : word);
+  utterance.lang = "en-US";
+  utterance.rate = slow ? 0.52 : 0.68;
+  utterance.pitch = 0.95;
+  utterance.volume = 1;
+  utterance.voice = getClearEnglishVoice(voices);
+  synth.speak(utterance);
+}
+
 export default function LexaSlayLearningHub() {
   const [player, setPlayer] = useState(storedPlayer);
   const [draftName, setDraftName] = useState(storedPlayer);
@@ -86,8 +137,17 @@ export default function LexaSlayLearningHub() {
   const [streak, setStreak] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [line, setLine] = useState(getLexaLine("idle"));
+  const [spellingMode, setSpellingMode] = useState<SpellingMode>("Mixed");
+  const [spellingRound, setSpellingRound] = useState<SpellingPrompt[]>(() => shuffle(getAllSpellingWords()).slice(0, 12));
+  const [spellingIndex, setSpellingIndex] = useState(0);
+  const [spellingScore, setSpellingScore] = useState(0);
+  const [spellingCorrect, setSpellingCorrect] = useState(0);
+  const [typedWord, setTypedWord] = useState("");
+  const [spellingFeedback, setSpellingFeedback] = useState("");
+  const [spellingDone, setSpellingDone] = useState(false);
 
   const current = round[index];
+  const currentSpelling = spellingRound[spellingIndex];
   const done = started && index >= round.length;
   const leaderboard = useMemo(() => [...scores].sort((a, b) => b.score - a.score).slice(0, 6), [scores]);
   const playerTotals = useMemo(() => {
@@ -115,7 +175,7 @@ export default function LexaSlayLearningHub() {
   function openView(nextView: View) {
     setStarted(false);
     setView(nextView);
-    setLine(getLexaLine(nextView === "play" ? "idle" : nextView === "rewards" ? "reward" : nextView === "missions" ? "mission" : nextView));
+    setLine(getLexaLine(nextView === "play" || nextView === "spelling" ? "idle" : nextView === "rewards" ? "reward" : nextView === "missions" ? "mission" : nextView));
   }
 
   function startRound() {
@@ -134,14 +194,15 @@ export default function LexaSlayLearningHub() {
     setLine(getLexaLine("start"));
   }
 
-  function finishRound(finalScore: number, finalCorrect: number) {
+  function finishRound(finalScore: number, finalCorrect: number, finalTotal = round.length, activity: ScoreRecord["activity"] = "Math") {
     const record = {
       id: typeof window !== "undefined" && window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}`,
       player: player.trim(),
       score: finalScore,
       correct: finalCorrect,
-      total: round.length,
+      total: finalTotal,
       date: new Date().toLocaleDateString(),
+      activity,
     };
     const nextScores = [record, ...scores].slice(0, 100);
     setScores(nextScores);
@@ -172,6 +233,51 @@ export default function LexaSlayLearningHub() {
     setSelected(null);
     setIndex((value) => value + 1);
     setLine(getLexaLine("idle"));
+  }
+
+  function startSpelling(nextMode: SpellingMode) {
+    if (!player.trim()) {
+      setLine("Enter your name first so your spelling score counts.");
+      return;
+    }
+    const pool = nextMode === "Mixed" ? getAllSpellingWords() : getSpellingWordsForDifficulty(nextMode);
+    setSpellingMode(nextMode);
+    setSpellingRound(shuffle(pool).slice(0, 12));
+    setSpellingIndex(0);
+    setSpellingScore(0);
+    setSpellingCorrect(0);
+    setTypedWord("");
+    setSpellingFeedback("");
+    setSpellingDone(false);
+    setView("spelling");
+    setStarted(false);
+    setLine("Tap Hear Word. I will say it slowly and clearly.");
+  }
+
+  function answerSpelling() {
+    if (!currentSpelling || spellingFeedback) return;
+    const isCorrect = normalizeSpelling(typedWord) === normalizeSpelling(currentSpelling.word);
+    const pointValue = currentSpelling.difficulty === "Challenge" ? 20 : currentSpelling.difficulty === "Builder" ? 15 : 10;
+    const nextScore = spellingScore + (isCorrect ? pointValue : 0);
+    const nextCorrect = spellingCorrect + (isCorrect ? 1 : 0);
+    setSpellingScore(nextScore);
+    setSpellingCorrect(nextCorrect);
+    setSpellingFeedback(isCorrect ? "Correct. Great spelling." : `Not quite. The word was ${currentSpelling.word}.`);
+    setLine(isCorrect ? getLexaLine("correct") : "Good try. Listen closely and keep practicing.");
+
+    if (spellingIndex + 1 >= spellingRound.length) {
+      setTimeout(() => {
+        setSpellingDone(true);
+        finishRound(nextScore, nextCorrect, spellingRound.length, "Spelling");
+      }, 500);
+    }
+  }
+
+  function nextSpellingWord() {
+    setTypedWord("");
+    setSpellingFeedback("");
+    setSpellingIndex((value) => value + 1);
+    setLine("Tap Hear Word when you are ready for the next word.");
   }
 
   return (
@@ -205,7 +311,7 @@ export default function LexaSlayLearningHub() {
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="grid gap-4">
-            <nav className="grid gap-2 rounded-[1.5rem] border border-white/10 bg-black/35 p-2 sm:grid-cols-5">
+            <nav className="grid gap-2 rounded-[1.5rem] border border-white/10 bg-black/35 p-2 sm:grid-cols-6">
               {nav.map(({ id, label, icon: Icon }) => (
                 <Button key={id} onClick={() => openView(id)} variant={view === id && !started ? "default" : "secondary"} className={view === id && !started ? "justify-center bg-fuchsia-500 text-white hover:bg-fuchsia-400" : "justify-center bg-white/10 text-white ring-white/15 hover:bg-white/15"}>
                   <Icon className="h-5 w-5" /> {label}
@@ -234,7 +340,7 @@ export default function LexaSlayLearningHub() {
               {leaderboard.length === 0 ? <p className="text-white/65">No scores yet. The crown is waiting.</p> : leaderboard.map((item, rank) => (
                 <div key={item.id} className="rounded-[1.25rem] bg-white/10 p-4 ring-1 ring-white/10">
                   <div className="flex justify-between gap-2 font-black"><span>#{rank + 1} {item.player}</span><span className="text-amber-100">{item.score}</span></div>
-                  <div className="mt-1 text-sm text-white/55">{item.correct}/{item.total} / {item.date}</div>
+                  <div className="mt-1 text-sm text-white/55">{item.activity ?? "Math"} / {item.correct}/{item.total} / {item.date}</div>
                 </div>
               ))}
             </Panel>
@@ -249,6 +355,7 @@ export default function LexaSlayLearningHub() {
     if (view === "missions") return <FeatureView pose="encourage" icon={Target} title="Small goals. Big slay." cards={missionCards} detail="Mission board placeholders for future quest tracking." />;
     if (view === "shop") return <FeatureView pose="shop" icon={ShoppingBag} title="Fresh drops just landed" cards={shopCards} detail="Reward and style shop placeholders only. No purchases are wired." />;
     if (view === "rewards") return <RewardsView leaderboard={leaderboard} playerTotals={playerTotals} />;
+    if (view === "spelling") return renderSpelling();
     return (
       <Panel>
         <div className="grid gap-6 md:grid-cols-[1fr_auto]">
@@ -257,14 +364,103 @@ export default function LexaSlayLearningHub() {
               <div className="text-sm font-black uppercase tracking-[0.2em] text-cyan-100">Lexa says</div>
               <p className="mt-3 text-2xl font-black">{line}</p>
             </div>
-            <div className="rounded-[1.5rem] border border-amber-200/25 bg-amber-300/10 p-5">
-              <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-amber-100"><BookOpen className="h-5 w-5" /> Math Quest</div>
-              <h2 className="mt-3 text-3xl font-black">Start a neon math round</h2>
-              <p className="mt-2 text-white/70">Multiple choice math stays intact, now with Lexa reactions, streak callouts, crowns, gems, and scoreboard logging.</p>
-              <Button onClick={startRound} size="xl" className="mt-5 bg-amber-300 text-slate-950 hover:bg-amber-200"><Zap className="h-5 w-5" /> Start Math</Button>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <div className="rounded-[1.5rem] border border-amber-200/25 bg-amber-300/10 p-5">
+                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-amber-100"><BookOpen className="h-5 w-5" /> Math Quest</div>
+                <h2 className="mt-3 text-3xl font-black">Start a neon math round</h2>
+                <p className="mt-2 text-white/70">Multiple choice math stays intact, now with Lexa reactions, streak callouts, crowns, gems, and scoreboard logging.</p>
+                <Button onClick={startRound} size="xl" className="mt-5 bg-amber-300 text-slate-950 hover:bg-amber-200"><Zap className="h-5 w-5" /> Start Math</Button>
+              </div>
+              <div className="rounded-[1.5rem] border border-fuchsia-200/25 bg-fuchsia-400/10 p-5">
+                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-fuchsia-100"><SpellCheck className="h-5 w-5" /> Spelling Studio</div>
+                <h2 className="mt-3 text-3xl font-black">Hear a word, then spell it</h2>
+                <p className="mt-2 text-white/70">The vocabulary reader now uses a slower, clearer English voice and a slow replay option.</p>
+                <Button onClick={() => openView("spelling")} size="xl" className="mt-5 bg-fuchsia-400 text-white hover:bg-fuchsia-300"><Volume2 className="h-5 w-5" /> Start Spelling</Button>
+              </div>
             </div>
           </div>
           <LexaCharacter pose="gameplay" size="lg" className="mx-auto" />
+        </div>
+      </Panel>
+    );
+  }
+
+  function renderSpelling() {
+    if (spellingDone) {
+      return (
+        <Panel>
+          <div className="grid gap-6 md:grid-cols-[auto_1fr]">
+            <LexaCharacter pose="celebrate" size="lg" className="mx-auto" />
+            <div className="grid content-center gap-4">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full bg-fuchsia-400 px-4 py-2 text-sm font-black uppercase tracking-[0.18em] text-white"><Trophy className="h-5 w-5" /> Spelling Score Logged</div>
+              <h2 className="text-4xl font-black">{getLexaLine("levelComplete")}</h2>
+              <p className="text-xl text-cyan-50/85">{player} scored {spellingScore} with {spellingCorrect}/{spellingRound.length} correct.</p>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => openView("play")} size="lg">Back to Lobby</Button>
+                <Button onClick={() => startSpelling(spellingMode)} variant="secondary" size="lg" className="bg-white/10 text-white ring-white/15">Play Again</Button>
+              </div>
+            </div>
+          </div>
+        </Panel>
+      );
+    }
+
+    return (
+      <Panel>
+        <div className="grid gap-6">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="rounded-full bg-fuchsia-500 px-4 py-2 text-sm font-black uppercase tracking-[0.2em]">Spelling Studio</div>
+              <div className="flex flex-wrap gap-2 text-sm font-black">
+                <Badge>Score {spellingScore}</Badge><Badge>Correct {spellingCorrect}</Badge><Badge>{spellingIndex + 1}/{spellingRound.length}</Badge><Badge>{spellingMode}</Badge>
+              </div>
+            </div>
+            <Progress value={Math.round((spellingIndex / spellingRound.length) * 100)} />
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto]">
+            <div className="grid gap-4">
+              <div>
+                <h2 className="text-3xl font-black leading-tight md:text-5xl">Listen, then spell the vocabulary word</h2>
+                <p className="mt-3 text-cyan-50/75">Clue: {currentSpelling?.clue ?? "Choose a spelling mode to begin."}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {SPELLING_MODES.map((mode) => (
+                  <Button key={mode} onClick={() => startSpelling(mode)} variant={spellingMode === mode ? "default" : "secondary"} className={spellingMode === mode ? "bg-fuchsia-500 text-white hover:bg-fuchsia-400" : "bg-white/10 text-white ring-white/15 hover:bg-white/15"}>
+                    {mode}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => currentSpelling && speakVocabularyWord(currentSpelling.word)} size="lg" className="bg-cyan-300 text-slate-950 hover:bg-cyan-200"><Volume2 className="h-5 w-5" /> Hear Word</Button>
+                <Button onClick={() => currentSpelling && speakVocabularyWord(currentSpelling.word, true)} size="lg" variant="secondary" className="bg-white/10 text-white ring-white/15"><Volume2 className="h-5 w-5" /> Slower Replay</Button>
+              </div>
+            </div>
+            <LexaCharacter pose="encourage" size="md" className="hidden lg:flex" />
+          </div>
+
+          <div className="grid gap-3">
+            <label className="sr-only" htmlFor="spelling-answer">Type the spelling word</label>
+            <input
+              id="spelling-answer"
+              value={typedWord}
+              onChange={(event) => setTypedWord(event.target.value)}
+              onKeyDown={(event) => event.key === "Enter" && answerSpelling()}
+              placeholder="Type the word you heard"
+              disabled={Boolean(spellingFeedback)}
+              className="min-h-16 rounded-[1.5rem] border-2 border-white/15 bg-white/10 px-5 text-2xl font-black text-white outline-none placeholder:text-white/45 focus:border-fuchsia-300 disabled:opacity-70"
+            />
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={answerSpelling} disabled={!typedWord.trim() || Boolean(spellingFeedback)} size="lg" className="bg-amber-300 text-slate-950 hover:bg-amber-200"><SpellCheck className="h-5 w-5" /> Submit</Button>
+              {spellingFeedback && spellingIndex + 1 < spellingRound.length && <Button onClick={nextSpellingWord} variant="secondary" size="lg" className="bg-white/10 text-white ring-white/15">Next Word</Button>}
+            </div>
+          </div>
+
+          {spellingFeedback && (
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/10 p-4 text-lg font-bold">
+              {spellingFeedback}
+            </div>
+          )}
         </div>
       </Panel>
     );
